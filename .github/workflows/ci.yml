@@ -1,0 +1,282 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend-tests:
+    name: Backend Tests & Quality
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Cache Gradle packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
+    - name: Make gradlew executable
+      run: chmod +x ./backend/gradlew
+
+    - name: Validate Gradle wrapper
+      run: |
+        ls -la ./backend/gradle/wrapper/
+        file ./backend/gradle/wrapper/gradle-wrapper.jar
+
+    - name: Run backend tests
+      run: |
+        cd backend
+        ./gradlew clean test --info
+
+    - name: Run Checkstyle
+      run: |
+        cd backend
+        ./gradlew checkstyleMain checkstyleTest
+
+    - name: Run PMD
+      run: |
+        cd backend
+        ./gradlew pmdMain pmdTest
+
+    - name: Run SpotBugs
+      run: |
+        cd backend
+        ./gradlew spotbugsMain spotbugsTest
+
+    - name: Generate test report and check coverage
+      run: |
+        cd backend
+        ./gradlew jacocoTestReport jacocoTestCoverageVerification
+
+    - name: Upload backend test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: backend-test-results
+        path: |
+          backend/build/reports/tests/
+          backend/build/reports/jacoco/
+          backend/build/reports/checkstyle/
+          backend/build/reports/pmd/
+          backend/build/reports/spotbugs/
+
+    - name: Upload backend coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./backend/build/reports/jacoco/test/jacocoTestReport.xml
+        flags: backend
+        name: backend-coverage
+
+  frontend-tests:
+    name: Frontend Tests & Quality
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install dependencies
+      run: |
+        cd frontend
+        npm ci
+
+    - name: Run ESLint
+      run: |
+        cd frontend
+        npm run lint
+
+    - name: Check Prettier formatting
+      run: |
+        cd frontend
+        npm run format:check
+
+    - name: Run frontend tests with coverage
+      run: |
+        cd frontend
+        npm run test:coverage
+
+    - name: Upload frontend test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: frontend-test-results
+        path: |
+          frontend/coverage/
+
+    - name: Upload frontend coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./frontend/coverage/lcov.info
+        flags: frontend
+        name: frontend-coverage
+
+  e2e-tests:
+    name: End-to-End Tests
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install frontend dependencies
+      run: |
+        cd frontend
+        npm ci
+
+    - name: Build frontend
+      run: |
+        cd frontend
+        npm run build
+
+    - name: Start backend server
+      run: |
+        cd backend
+        chmod +x ./gradlew
+        ./gradlew bootRun &
+        sleep 30
+
+    - name: Start frontend server
+      run: |
+        cd frontend
+        npm run preview &
+        sleep 10
+
+    - name: Run Cypress E2E tests
+      run: |
+        cd frontend
+        npm run e2e
+
+    - name: Upload E2E test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: e2e-test-results
+        path: |
+          frontend/cypress/videos/
+          frontend/cypress/screenshots/
+
+  build-check:
+    name: Build Check
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Build backend
+      run: |
+        cd backend
+        chmod +x ./gradlew
+        ./gradlew build -x test
+
+    - name: Build frontend
+      run: |
+        cd frontend
+        npm ci
+        npm run build
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-artifacts
+        path: |
+          backend/build/libs/
+          frontend/dist/
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      continue-on-error: true
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests, build-check]
+    if: always()
+
+    steps:
+    - name: Check job results
+      run: |
+        if [[ "${{ needs.backend-tests.result }}" != "success" ]]; then
+          echo "Backend tests failed"
+          exit 1
+        fi
+        if [[ "${{ needs.frontend-tests.result }}" != "success" ]]; then
+          echo "Frontend tests failed"
+          exit 1
+        fi
+        if [[ "${{ needs.build-check.result }}" != "success" ]]; then
+          echo "Build check failed"
+          exit 1
+        fi
+        echo "All quality checks passed!"

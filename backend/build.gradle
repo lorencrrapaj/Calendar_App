@@ -1,0 +1,151 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.2.0'
+    id 'io.spring.dependency-management' version '1.1.4'
+    id 'checkstyle'
+    id 'pmd'
+    id 'com.github.spotbugs' version '6.0.7'
+    id 'jacoco'
+}
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    sourceCompatibility = '17'
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Spring Boot starters
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5', 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+    // Database
+    runtimeOnly 'com.h2database:h2'
+    implementation 'org.flywaydb:flyway-core'
+
+    // Lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // Testing
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    finalizedBy jacocoTestReport
+}
+
+// Explicitly declare test framework to avoid deprecation warning
+testing {
+    suites {
+        test {
+            useJUnitJupiter()
+        }
+    }
+}
+
+// Jacoco configuration
+jacoco {
+    toolVersion = "0.8.11"
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
+    finalizedBy jacocoTestCoverageVerification
+}
+
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            limit {
+                minimum = 0.90
+            }
+        }
+    }
+}
+
+// Checkstyle configuration
+checkstyle {
+    toolVersion = '10.12.4'
+    configFile = file("./config/checkstyle/checkstyle.xml")
+}
+
+checkstyleMain {
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+checkstyleTest {
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+// PMD configuration
+pmd {
+    toolVersion = '6.55.0'
+    ruleSetFiles = files("./config/pmd/pmd-rules.xml")
+    ruleSets = []
+}
+
+pmdMain {
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+pmdTest {
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+// SpotBugs configuration
+spotbugs {
+    toolVersion = '4.8.3'
+    ignoreFailures = true
+}
+
+spotbugsMain {
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+spotbugsTest {
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+// Make check task depend on all quality checks
+check.dependsOn jacocoTestCoverageVerification

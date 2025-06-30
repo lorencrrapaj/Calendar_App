@@ -1,0 +1,12 @@
+# Links to the user stories (requirements)
+- Requirement 1:  User Management                   https://github.com/se2p/ss25-ai-lab-final-project-lorencrrapaj/issues/1
+- Requirement 2:  Calendar View                     https://github.com/se2p/ss25-ai-lab-final-project-lorencrrapaj/issues/2
+- Requirement 3:  Add Events                        https://github.com/se2p/ss25-ai-lab-final-project-lorencrrapaj/issues/3
+- Requirement 4:  Edit and Delete Events            https://github.com/se2p/ss25-ai-lab-final-project-lorencrrapaj/issues/4
+- Requirement 5:  Reminders                         https://github.com/se2p/ss25-ai-lab-final-project-lorencrrapaj/issues/5
+- Requirement 6:  Recurring Events                  https://github.com/se2p/ss25-ai-lab-final-project-lorencrrapaj/issues/6
+- Requirement 7:  Event Tags                        https://github.com/se2p/ss25-ai-lab-final-project-lorencrrapaj/issues/7
+- Requirement 8:  Data Persistence                  https://github.com/se2p/ss25-ai-lab-final-project-lorencrrapaj/issues/8
+- Requirement 9:  Usability                         https://github.com/se2p/ss25-ai-lab-final-project-lorencrrapaj/issues/9
+- Requirement 10: Security                          https://github.com/se2p/ss25-ai-lab-final-project-lorencrrapaj/issues/10
+- Requirement 11: Performance                       https://github.com/se2p/ss25-ai-lab-final-project-lorencrrapaj/issues/11

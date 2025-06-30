@@ -1,0 +1,21 @@
+server:
+  port: 8082  # Use port 8081 instead of default 8080
+
+spring:
+  datasource:
+    url: jdbc:h2:file:./data/calendar;DB_CLOSE_ON_EXIT=FALSE
+    driverClassName: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+# (Optional) expose actuator, etc.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
